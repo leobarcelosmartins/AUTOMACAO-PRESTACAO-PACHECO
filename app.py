@@ -70,7 +70,7 @@ if 'dados_sessao' not in st.session_state:
 # --- SIDEBAR (Corrigido para manter Título e Métricas) ---
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/3208/3208726.png", width=100)
-    st.title("Painel de Controlo")
+    st.title("Painel de Controle")
     st.markdown("---")
     
     total_anexos = sum(len(v) for v in st.session_state.dados_sessao.values())
@@ -317,4 +317,5 @@ if st.button("🚀 FINALIZAR E GERAR RELATÓRIO", type="primary", width='stretch
 st.caption("Desenvolvido por Leonardo Barcelos Martins")
 
     
+
 
