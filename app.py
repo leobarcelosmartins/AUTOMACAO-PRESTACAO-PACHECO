@@ -58,9 +58,8 @@ DIMENSOES_CAMPOS = {
     "IMAGEM_DOCUMENTO_RAIO_X": 165, "TABELA_TRANSFERENCIA": 120,
     "GRAFICO_TRANSFERENCIA": 60, "TABELA_OBITO": 180, 
     "TABELA_CCIH": 160, "IMAGEM_NEP": 160,
-    "IMAGEM_TREINAMENTO_INTERNO": 160, "IMAGEM_MELHORIAS": 160,
-    "GRAFICO_OUVIDORIA": 155, "PDF_OUVIDORIA_INTERNA": 60,
-    "TABELA_QUALITATIVA_IMG": 190
+    "IMAGEM_MELHORIAS": 160, "GRAFICO_OUVIDORIA": 155, 
+    "PDF_OUVIDORIA_INTERNA": 60, "TABELA_QUALITATIVA_IMG": 190
 }
 
 # --- ESTADO DA SESSÃO ---
@@ -208,15 +207,15 @@ with t_evidencia:
         "IMAGEM_DOCUMENTO_RAIO_X": "Doc. Raio-X", "TABELA_TRANSFERENCIA": "Tabela Transferência", 
         "GRAFICO_TRANSFERENCIA": "Gráfico Transferência", "TABELA_OBITO": "Tab. Óbito", 
         "TABELA_CCIH": "Tabela CCIH", "TABELA_QUALITATIVA_IMG": "Tab. Qualitativa",
-        "IMAGEM_NEP": "Imagens NEP", "IMAGEM_TREINAMENTO_INTERNO": "Treinamento Interno", 
-        "IMAGEM_MELHORIAS": "Melhorias", "GRAFICO_OUVIDORIA": "Gráfico Ouvidoria", "PDF_OUVIDORIA_INTERNA": "Tabela Ouvidoria"
+        "IMAGEM_NEP": "Imagens NEP", "IMAGEM_MELHORIAS": "Melhorias",
+        "GRAFICO_OUVIDORIA": "Gráfico Ouvidoria", "PDF_OUVIDORIA_INTERNA": "Tabela Ouvidoria"
     }
     
     blocos = [
         ["IMAGEM_PRINT_ATENDIMENTO", "PRINT_CLASSIFICACAO", "IMAGEM_DOCUMENTO_RAIO_X"],
         ["TABELA_TRANSFERENCIA", "GRAFICO_TRANSFERENCIA"],
         ["TABELA_OBITO", "TABELA_CCIH", "TABELA_QUALITATIVA_IMG"],
-        ["IMAGEM_NEP", "IMAGEM_TREINAMENTO_INTERNO", "IMAGEM_MELHORIAS", "GRAFICO_OUVIDORIA", "PDF_OUVIDORIA_INTERNA"]
+        ["IMAGEM_NEP", "IMAGEM_MELHORIAS", "GRAFICO_OUVIDORIA", "PDF_OUVIDORIA_INTERNA"]
     ]
 
     for b_idx, lista_m in enumerate(blocos):
@@ -317,6 +316,7 @@ if st.button("🚀 FINALIZAR E GERAR RELATÓRIO", type="primary", width='stretch
 st.caption("Desenvolvido por Leonardo Barcelos Martins")
 
     
+
 
 
 
