@@ -1,0 +1,9 @@
+streamlit
+docxtpl
+python-docx
+pymupdf
+Pillow
+pandas
+openpyxl
+matplotlib
+streamlit-paste-button
