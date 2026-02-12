@@ -154,7 +154,7 @@ st.caption("Versão 0.7.12")
 t_manual, t_evidencia = st.tabs(["Dados", "Evidências"])
 
 with t_manual:
-    st.markdown("###Configuração do Período e Metas")
+    st.markdown("### Configuração do Período e Metas")
     
     c1, c2, c3 = st.columns(3)
     meses_pt = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
@@ -177,7 +177,7 @@ with t_manual:
     with c6: st.text_input("Meta +25% (Calculada)", value=str(meta_max), disabled=True)
 
     st.markdown("---")
-    st.markdown("###Dados Assistenciais")
+    st.markdown("### Dados Assistenciais")
 
     c7, c8, c9 = st.columns(3)
     with c7: st.text_input("Total Raio-X", key="in_rx")
@@ -317,3 +317,4 @@ if st.button("🚀 FINALIZAR E GERAR RELATÓRIO", type="primary", width='stretch
 st.caption("Desenvolvido por Leonardo Barcelos Martins")
 
     
+
