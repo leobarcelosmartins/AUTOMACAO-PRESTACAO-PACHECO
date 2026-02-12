@@ -148,8 +148,8 @@ def processar_item_lista(doc_template, item, marcador):
         return []
 
 # --- UI PRINCIPAL ---
-st.title("Automação de Relatórios - UPA Nova Cidade")
-st.caption("Versão 0.7.12 - Ajuste de Menu Lateral e Layout")
+st.title("Automação de Relatórios - UPA Pacheco")
+st.caption("Versão 0.7.12")
 
 t_manual, t_evidencia = st.tabs(["Dados", "Evidências"])
 
