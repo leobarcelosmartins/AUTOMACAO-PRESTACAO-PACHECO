@@ -57,7 +57,7 @@ DIMENSOES_CAMPOS = {
     "IMAGEM_PRINT_ATENDIMENTO": 165, "PRINT_CLASSIFICACAO": 160,
     "IMAGEM_DOCUMENTO_RAIO_X": 165, "TABELA_TRANSFERENCIA": 90,
     "GRAFICO_TRANSFERENCIA": 160, "TABELA_OBITO": 180, 
-    "TABELA_CCIH": 180, "IMAGEM_NEP": 160,
+    "TABELA_CCIH": 160, "IMAGEM_NEP": 160,
     "IMAGEM_TREINAMENTO_INTERNO": 160, "IMAGEM_MELHORIAS": 160,
     "GRAFICO_OUVIDORIA": 155, "PDF_OUVIDORIA_INTERNA": 165,
     "TABELA_QUALITATIVA_IMG": 160
@@ -76,7 +76,7 @@ with st.sidebar:
     total_anexos = sum(len(v) for v in st.session_state.dados_sessao.values())
     st.metric("Total de Anexos", total_anexos)
     
-    if st.button("🗑️ Limpar Todos os Dados", width='stretch'):
+    if st.button("🗑 Limpar Todos os Dados", width='stretch'):
         st.session_state.dados_sessao = {m: [] for m in DIMENSOES_CAMPOS.keys()}
         st.rerun()
     
@@ -151,10 +151,10 @@ def processar_item_lista(doc_template, item, marcador):
 st.title("Automação de Relatórios - UPA Nova Cidade")
 st.caption("Versão 0.7.12 - Ajuste de Menu Lateral e Layout")
 
-t_manual, t_evidencia = st.tabs(["📝 Dados", "📁 Evidências"])
+t_manual, t_evidencia = st.tabs(["Dados", "Evidências"])
 
 with t_manual:
-    st.markdown("### 📅 Configuração do Período e Metas")
+    st.markdown("###Configuração do Período e Metas")
     
     c1, c2, c3 = st.columns(3)
     meses_pt = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
@@ -177,7 +177,7 @@ with t_manual:
     with c6: st.text_input("Meta +25% (Calculada)", value=str(meta_max), disabled=True)
 
     st.markdown("---")
-    st.markdown("### 🏥 Dados Assistenciais")
+    st.markdown("###Dados Assistenciais")
 
     c7, c8, c9 = st.columns(3)
     with c7: st.text_input("Total Raio-X", key="in_rx")
@@ -232,7 +232,7 @@ with t_evidencia:
                     pasted = paste_image_button(label="Colar Print", key=key_p)
                     if pasted is not None and pasted.image_data is not None:
                         st.session_state.dados_sessao[m].append({"name": f"Captura_{len(st.session_state.dados_sessao[m]) + 1}.png", "content": pasted.image_data, "type": "p"})
-                        st.toast(f"📸 Anexado em: {labels[m]}")
+                        st.toast(f"Anexado em: {labels[m]}")
                         time.sleep(0.5)
                         st.rerun()
                 with cb:
@@ -244,7 +244,7 @@ with t_evidencia:
 
                 if st.session_state.dados_sessao[m]:
                     for i_idx, item in enumerate(st.session_state.dados_sessao[m]):
-                        with st.expander(f"📄 {item['name']}", expanded=False):
+                        with st.expander(f"{item['name']}", expanded=False):
                             is_image = item['type'] == "p" or item['name'].lower().endswith(('.png', '.jpg', '.jpeg'))
                             if is_image:
                                 st.image(item['content'], width='stretch')
@@ -303,14 +303,14 @@ if st.button("🚀 FINALIZAR E GERAR RELATÓRIO", type="primary", width='stretch
             c_down1, c_down2 = st.columns(2)
             with c_down1:
                 with open(docx_p, "rb") as f_w:
-                    st.download_button(label="📥 Baixar WORD (.docx)", data=f_w.read(), file_name=f"Relatorio_{mes_selecionado}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", width='stretch')
+                    st.download_button(label="Baixar WORD (.docx)", data=f_w.read(), file_name=f"Relatorio_{mes_selecionado}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", width='stretch')
             with c_down2:
                 try:
                     converter_para_pdf(docx_p, tmp)
                     pdf_p = os.path.join(tmp, "relatorio.pdf")
                     if os.path.exists(pdf_p):
                         with open(pdf_p, "rb") as f_p:
-                            st.download_button(label="📥 Baixar PDF", data=f_p.read(), file_name=f"Relatorio_{mes_selecionado}.pdf", mime="application/pdf", width='stretch')
+                            st.download_button(label="Baixar PDF", data=f_p.read(), file_name=f"Relatorio_{mes_selecionado}.pdf", mime="application/pdf", width='stretch')
                 except: st.warning("LibreOffice não encontrado.")
     except Exception as e: st.error(f"Erro na geração: {e}")
 
