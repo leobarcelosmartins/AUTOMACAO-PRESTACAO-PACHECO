@@ -13,11 +13,9 @@ from PIL import Image
 import platform
 import time
 import calendar
-import json
-import base64
 
 # --- CONFIGURAÇÕES DE LAYOUT ---
-st.set_page_config(page_title="Gerador de Relatórios V0.7.10", layout="wide")
+st.set_page_config(page_title="Gerador de Relatórios V0.7.12", layout="wide")
 
 # --- CONSTANTES DO CONTRATO ---
 META_DIARIA_CONTRATO = 250
@@ -51,7 +49,6 @@ st.markdown("""
         height: 2em !important;
     }
     .upload-label { font-weight: bold; color: #1f2937; margin-bottom: 8px; display: block; }
-    .stRadio > div { flex-direction: row; gap: 20px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -69,6 +66,21 @@ DIMENSOES_CAMPOS = {
 # --- ESTADO DA SESSÃO ---
 if 'dados_sessao' not in st.session_state:
     st.session_state.dados_sessao = {m: [] for m in DIMENSOES_CAMPOS.keys()}
+
+# --- SIDEBAR (Corrigido para manter Título e Métricas) ---
+with st.sidebar:
+    st.image("https://cdn-icons-png.flaticon.com/512/3208/3208726.png", width=100)
+    st.title("Painel de Controlo")
+    st.markdown("---")
+    
+    total_anexos = sum(len(v) for v in st.session_state.dados_sessao.values())
+    st.metric("Total de Anexos", total_anexos)
+    
+    if st.button("🗑️ Limpar Todos os Dados", width='stretch'):
+        st.session_state.dados_sessao = {m: [] for m in DIMENSOES_CAMPOS.keys()}
+        st.rerun()
+    
+
 
 # --- FUNÇÕES CORE ---
 def excel_para_imagem(doc_template, arquivo_excel):
@@ -106,13 +118,22 @@ def converter_para_pdf(docx_path, output_dir):
 def processar_item_lista(doc_template, item, marcador):
     largura = DIMENSOES_CAMPOS.get(marcador, 165)
     try:
-        if hasattr(item, 'seek'): item.seek(0)
+        if isinstance(item, Image.Image):
+            img_buf = io.BytesIO()
+            item.save(img_buf, format='PNG')
+            img_buf.seek(0)
+            return [InlineImage(doc_template, img_buf, width=Mm(largura))]
+        
         if isinstance(item, bytes):
             return [InlineImage(doc_template, io.BytesIO(item), width=Mm(largura))]
+            
+        if hasattr(item, 'seek'): item.seek(0)
+        
         ext = getattr(item, 'name', '').lower()
         if marcador == "TABELA_TRANSFERENCIA" and (ext.endswith(".xlsx") or ext.endswith(".xls")):
             res = excel_para_imagem(doc_template, item)
             return [res] if res else []
+            
         if ext.endswith(".pdf"):
             pdf = fitz.open(stream=item.read(), filetype="pdf")
             imgs = []
@@ -121,263 +142,178 @@ def processar_item_lista(doc_template, item, marcador):
                 imgs.append(InlineImage(doc_template, io.BytesIO(pix.tobytes()), width=Mm(largura)))
             pdf.close()
             return imgs
+            
         return [InlineImage(doc_template, item, width=Mm(largura))]
-    except Exception: return []
-
-# --- FUNÇÕES DE IMPORTAÇÃO/EXPORTAÇÃO ---
-def exportar_pacote():
-    pacote = {}
-    for marcador, itens in st.session_state.dados_sessao.items():
-        pacote[marcador] = []
-        for it in itens:
-            content = it['content']
-            if hasattr(content, 'getvalue'):
-                b64 = base64.b64encode(content.getvalue()).decode()
-            elif isinstance(content, bytes):
-                b64 = base64.b64encode(content).decode()
-            else:
-                continue
-            pacote[marcador].append({"name": it['name'], "type": it['type'], "content": b64})
-    return json.dumps(pacote)
-
-def importar_pacote(json_str):
-    try:
-        pacote = json.loads(json_str)
-        for marcador, itens in pacote.items():
-            st.session_state.dados_sessao[marcador] = []
-            for it in itens:
-                raw_bytes = base64.b64decode(it['content'])
-                st.session_state.dados_sessao[marcador].append({
-                    "name": it['name'],
-                    "type": it['type'],
-                    "content": io.BytesIO(raw_bytes)
-                })
-        st.toast("✅ Dados da Unidade importados com sucesso!")
-        time.sleep(1)
-        st.rerun()
     except Exception as e:
-        st.error(f"Erro na importação: {e}")
+        return []
 
-# --- SIDEBAR ---
-with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/3208/3208726.png", width=100)
-    st.title("Sistema de Gestão")
-    st.markdown("---")
-    modo = st.radio("Selecione o Perfil:", ["Analista (Relatório)", "Unidade (Envio de Dados)"])
-    st.markdown("---")
-    if st.button("🗑️ Limpar Sessão", width='stretch'):
-        st.session_state.dados_sessao = {m: [] for m in DIMENSOES_CAMPOS.keys()}
-        st.rerun()
+# --- UI PRINCIPAL ---
+st.title("Automação de Relatórios - UPA Nova Cidade")
+st.caption("Versão 0.7.12 - Ajuste de Menu Lateral e Layout")
 
-# --- INTERFACE UNIDADE (PONTA) ---
-if modo == "Unidade (Envio de Dados)":
-    st.title("🚀 Portal de Envio - Unidade")
-    st.info("Unidade: Use esta aba para carregar todos os documentos do mês. Ao terminar, clique em 'Gerar Pacote de Dados'.")
+t_manual, t_evidencia = st.tabs(["📝 Dados", "📁 Evidências"])
+
+with t_manual:
+    st.markdown("### 📅 Configuração do Período e Metas")
     
-    col_u1, col_u2 = st.columns(2)
-    with col_u1:
-        u_mes = st.selectbox("Mês de Referência", ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"], key="u_mes")
-    with col_u2:
-        u_ano = st.selectbox("Ano", [2024, 2025, 2026, 2027], index=2, key="u_ano")
+    c1, c2, c3 = st.columns(3)
+    meses_pt = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+    with c1: 
+        mes_selecionado = st.selectbox("Mês de Referência", meses_pt, key="sel_mes")
+    with c2: 
+        ano_selecionado = st.selectbox("Ano", [2024, 2025, 2026, 2027], index=2, key="sel_ano")
+    with c3:
+        st.text_input("Total de Atendimentos", key="in_total")
 
-    st.markdown("### 📁 Carregamento de Evidências")
+    mes_num = meses_pt.index(mes_selecionado) + 1
+    dias_no_mes = calendar.monthrange(ano_selecionado, mes_num)[1]
+    meta_calculada = dias_no_mes * META_DIARIA_CONTRATO
+    meta_min = int(meta_calculada * 0.75)
+    meta_max = int(meta_calculada * 1.25)
+
+    c4, c5, c6 = st.columns(3)
+    with c4: st.text_input("Meta do Mês (Calculada)", value=str(meta_calculada), disabled=True)
+    with c5: st.text_input("Meta -25% (Calculada)", value=str(meta_min), disabled=True)
+    with c6: st.text_input("Meta +25% (Calculada)", value=str(meta_max), disabled=True)
+
+    st.markdown("---")
+    st.markdown("### 🏥 Dados Assistenciais")
+
+    c7, c8, c9 = st.columns(3)
+    with c7: st.text_input("Total Raio-X", key="in_rx")
+    with c8: st.text_input("Médicos Clínicos", key="in_mc")
+    with c9: st.text_input("Médicos Pediatras", key="in_mp")
+
+    c10, c11, c12 = st.columns(3)
+    with c10: st.text_input("Odonto Clínico", key="in_oc")
+    with c11: st.text_input("Odonto Ped", key="in_op")
+    with c12: st.text_input("Pacientes CCIH", key="in_ccih")
+
+    c13, c14, c15 = st.columns(3)
+    with c13: st.text_input("Ouvidoria Interna", key="in_oi")
+    with c14: st.text_input("Ouvidoria Externa", key="in_oe")
+    with c15: st.text_input("Taxa de Transferência (%)", key="in_taxa")
+
+    c16, c17, c18 = st.columns(3)
+    with c16: st.number_input("Total de Transferências", step=1, key="in_tt")
+    with c17: st.number_input("Total de Óbitos", key="in_to", step=1)
+    with c18: st.number_input("Óbito < 24h", key="in_to_menor", step=1)
+
+    c19, c20, c21 = st.columns(3)
+    with c19: st.number_input("Óbito > 24h", key="in_to_maior", step=1)
+
+with t_evidencia:
     labels = {
         "IMAGEM_PRINT_ATENDIMENTO": "Prints Atendimento", "PRINT_CLASSIFICACAO": "Classificação de Risco", 
-        "IMAGEM_DOCUMENTO_RAIO_X": "Doc. Raio-X", "TABELA_TRANSFERENCIA": "Planilha de Transferências (Excel)", 
+        "IMAGEM_DOCUMENTO_RAIO_X": "Doc. Raio-X", "TABELA_TRANSFERENCIA": "Tabela Transferência", 
         "GRAFICO_TRANSFERENCIA": "Gráfico Transferência", "TABELA_OBITO": "Tab. Óbito", 
-        "TABELA_CCIH": "Tabela CCIH", "TABELA_QUALITATIVA_IMG": "Metas Qualitativas",
-        "IMAGEM_NEP": "Fotos NEP", "IMAGEM_TREINAMENTO_INTERNO": "Treinamentos", 
-        "IMAGEM_MELHORIAS": "Melhorias Realizadas", "GRAFICO_OUVIDORIA": "Gráfico Ouvidoria", "PDF_OUVIDORIA_INTERNA": "Relatório Ouvidoria"
+        "TABELA_CCIH": "Tabela CCIH", "TABELA_QUALITATIVA_IMG": "Tab. Qualitativa",
+        "IMAGEM_NEP": "Imagens NEP", "IMAGEM_TREINAMENTO_INTERNO": "Treinamento Interno", 
+        "IMAGEM_MELHORIAS": "Melhorias", "GRAFICO_OUVIDORIA": "Gráfico Ouvidoria", "PDF_OUVIDORIA_INTERNA": "Relatório Ouvidoria"
     }
-
-    # Layout simplificado para a unidade
-    for m, label in labels.items():
-        with st.expander(f"➕ {label}", expanded=False):
-            f_up = st.file_uploader(f"Anexar {label}", type=['png', 'jpg', 'pdf', 'xlsx'], key=f"u_f_{m}")
-            if f_up:
-                if f_up.name not in [x['name'] for x in st.session_state.dados_sessao[m]]:
-                    st.session_state.dados_sessao[m].append({"name": f_up.name, "content": f_up, "type": "f"})
-                    st.toast(f"Anexado: {f_up.name}")
-            
-            if st.session_state.dados_sessao[m]:
-                for i_idx, item in enumerate(st.session_state.dados_sessao[m]):
-                    st.caption(f"✅ {item['name']}")
-                    if st.button(f"Remover {i_idx}", key=f"u_del_{m}_{i_idx}"):
-                        st.session_state.dados_sessao[m].pop(i_idx)
-                        st.rerun()
-
-    st.markdown("---")
-    if st.button("📦 GERAR PACOTE DE DADOS (.tatico)", type="primary", width='stretch'):
-        pacote_json = exportar_pacote()
-        st.download_button(
-            label="⬇️ BAIXAR PACOTE PARA O ANALISTA",
-            data=pacote_json,
-            file_name=f"DADOS_UNIDADE_{u_mes}_{u_ano}.tatico",
-            mime="application/json",
-            width='stretch'
-        )
-
-# --- INTERFACE ANALISTA (RELATÓRIO) ---
-else:
-    st.title("📊 Automação de Relatórios - Analista")
     
-    # Opção de Importação
-    with st.expander("📥 Importar Dados da Unidade", expanded=True):
-        f_import = st.file_uploader("Arraste o arquivo .tatico enviado pela unidade aqui", type=['tatico'])
-        if f_import:
-            if st.button("Confirmar Importação de Dados"):
-                importar_pacote(f_import.read().decode())
+    blocos = [
+        ["IMAGEM_PRINT_ATENDIMENTO", "PRINT_CLASSIFICACAO", "IMAGEM_DOCUMENTO_RAIO_X"],
+        ["TABELA_TRANSFERENCIA", "GRAFICO_TRANSFERENCIA"],
+        ["TABELA_OBITO", "TABELA_CCIH", "TABELA_QUALITATIVA_IMG"],
+        ["IMAGEM_NEP", "IMAGEM_TREINAMENTO_INTERNO", "IMAGEM_MELHORIAS", "GRAFICO_OUVIDORIA", "PDF_OUVIDORIA_INTERNA"]
+    ]
 
-    t_manual, t_evidencia = st.tabs(["📝 Dados", "📁 Evidências"])
-
-    with t_manual:
-        st.markdown("### 📅 Período e Metas")
-        c1, c2, c3 = st.columns(3)
-        meses_pt = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
-        with c1: mes_sel = st.selectbox("Mês de Referência", meses_pt, key="sel_mes")
-        with c2: ano_sel = st.selectbox("Ano", [2024, 2025, 2026, 2027], index=2, key="sel_ano")
-        with c3: st.text_input("Total de Atendimentos", key="in_total")
-
-        mes_num = meses_pt.index(mes_sel) + 1
-        dias_no_mes = calendar.monthrange(ano_sel, mes_num)[1]
-        meta_calc = dias_no_mes * META_DIARIA_CONTRATO
-        
-        c4, c5, c6 = st.columns(3)
-        with c4: st.text_input("Meta do Mês (Calculada)", value=str(meta_calc), disabled=True)
-        with c5: st.text_input("Meta -25% (Calculada)", value=str(int(meta_calc*0.75)), disabled=True)
-        with c6: st.text_input("Meta +25% (Calculada)", value=str(int(meta_calc*1.25)), disabled=True)
-
-        st.markdown("---")
-        st.markdown("### 🏥 Dados Assistenciais")
-        c7, c8, c9 = st.columns(3)
-        with c7: st.text_input("Total Raio-X", key="in_rx")
-        with c8: st.text_input("Médicos Clínicos", key="in_mc")
-        with c9: st.text_input("Médicos Pediatras", key="in_mp")
-
-        c10, c11, c12 = st.columns(3)
-        with c10: st.text_input("Odonto Clínico", key="in_oc")
-        with c11: st.text_input("Odonto Ped", key="in_op")
-        with c12: st.text_input("Pacientes CCIH", key="in_ccih")
-
-        c13, c14, c15 = st.columns(3)
-        with c13: st.text_input("Ouvidoria Interna", key="in_oi")
-        with c14: st.text_input("Ouvidoria Externa", key="in_oe")
-        with c15: st.text_input("Taxa de Transferência (%)", key="in_taxa")
-
-        c16, c17, c18 = st.columns(3)
-        with c16: st.number_input("Total de Transferências", step=1, key="in_tt")
-        with c17: st.number_input("Total de Óbitos", key="in_to", step=1)
-        with c18: st.number_input("Óbito < 24h", key="in_to_menor", step=1)
-
-        c19, c20, c21 = st.columns(3)
-        with c19: st.number_input("Óbito > 24h", key="in_to_maior", step=1)
-
-    with t_evidencia:
-        labels_ev = {
-            "IMAGEM_PRINT_ATENDIMENTO": "Prints Atendimento", "PRINT_CLASSIFICACAO": "Classificação de Risco", 
-            "IMAGEM_DOCUMENTO_RAIO_X": "Doc. Raio-X", "TABELA_TRANSFERENCIA": "Tabela Transferência", 
-            "GRAFICO_TRANSFERENCIA": "Gráfico Transferência", "TABELA_OBITO": "Tab. Óbito", 
-            "TABELA_CCIH": "Tabela CCIH", "TABELA_QUALITATIVA_IMG": "Tab. Qualitativa",
-            "IMAGEM_NEP": "Imagens NEP", "IMAGEM_TREINAMENTO_INTERNO": "Treinamento Interno", 
-            "IMAGEM_MELHORIAS": "Melhorias", "GRAFICO_OUVIDORIA": "Gráfico Ouvidoria", "PDF_OUVIDORIA_INTERNA": "Relatório Ouvidoria"
-        }
-        
-        blocos_ev = [
-            ["IMAGEM_PRINT_ATENDIMENTO", "PRINT_CLASSIFICACAO", "IMAGEM_DOCUMENTO_RAIO_X"],
-            ["TABELA_TRANSFERENCIA", "GRAFICO_TRANSFERENCIA"],
-            ["TABELA_OBITO", "TABELA_CCIH", "TABELA_QUALITATIVA_IMG"],
-            ["IMAGEM_NEP", "IMAGEM_TREINAMENTO_INTERNO", "IMAGEM_MELHORIAS", "GRAFICO_OUVIDORIA", "PDF_OUVIDORIA_INTERNA"]
-        ]
-
-        for b_idx, lista_m in enumerate(blocos_ev):
-            st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
-            col_esq, col_dir = st.columns(2)
-            for idx, m in enumerate(lista_m):
-                target = col_esq if idx % 2 == 0 else col_dir
-                with target:
-                    st.markdown(f"<span class='upload-label'>{labels_ev.get(m, m)}</span>", unsafe_allow_html=True)
-                    ca, cb = st.columns([1, 1])
-                    with ca:
-                        key_p = f"p_{m}_{len(st.session_state.dados_sessao[m])}"
-                        pasted = paste_image_button(label="Colar Print", key=key_p)
-                        if pasted is not None and pasted.image_data is not None:
-                            st.session_state.dados_sessao[m].append({"name": f"Captura_{len(st.session_state.dados_sessao[m]) + 1}.png", "content": pasted.image_data, "type": "p"})
-                            st.toast(f"📸 Anexado em: {labels_ev[m]}")
-                            time.sleep(0.5)
+    for b_idx, lista_m in enumerate(blocos):
+        st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
+        col_esq, col_dir = st.columns(2)
+        for idx, m in enumerate(lista_m):
+            target = col_esq if idx % 2 == 0 else col_dir
+            with target:
+                st.markdown(f"<span class='upload-label'>{labels.get(m, m)}</span>", unsafe_allow_html=True)
+                ca, cb = st.columns([1, 1])
+                with ca:
+                    key_p = f"p_{m}_{len(st.session_state.dados_sessao[m])}"
+                    pasted = paste_image_button(label="Colar Print", key=key_p)
+                    if pasted is not None and pasted.image_data is not None:
+                        st.session_state.dados_sessao[m].append({"name": f"Captura_{len(st.session_state.dados_sessao[m]) + 1}.png", "content": pasted.image_data, "type": "p"})
+                        st.toast(f"📸 Anexado em: {labels[m]}")
+                        time.sleep(0.5)
+                        st.rerun()
+                with cb:
+                    f_up = st.file_uploader("Upload", type=['png', 'jpg', 'pdf', 'xlsx'], key=f"f_{m}_{b_idx}", label_visibility="collapsed")
+                    if f_up:
+                        if f_up.name not in [x['name'] for x in st.session_state.dados_sessao[m]]:
+                            st.session_state.dados_sessao[m].append({"name": f_up.name, "content": f_up, "type": "f"})
                             st.rerun()
-                    with cb:
-                        f_up = st.file_uploader("Upload", type=['png', 'jpg', 'pdf', 'xlsx'], key=f"f_{m}_{b_idx}", label_visibility="collapsed")
-                        if f_up:
-                            if f_up.name not in [x['name'] for x in st.session_state.dados_sessao[m]]:
-                                st.session_state.dados_sessao[m].append({"name": f_up.name, "content": f_up, "type": "f"})
+
+                if st.session_state.dados_sessao[m]:
+                    for i_idx, item in enumerate(st.session_state.dados_sessao[m]):
+                        with st.expander(f"📄 {item['name']}", expanded=False):
+                            is_image = item['type'] == "p" or item['name'].lower().endswith(('.png', '.jpg', '.jpeg'))
+                            if is_image:
+                                st.image(item['content'], width='stretch')
+                            else:
+                                st.info(f"Ficheiro {item['name'].split('.')[-1].upper()} pronto para o relatório.")
+                                
+                            if st.button("Remover", key=f"del_{m}_{i_idx}_{b_idx}"):
+                                st.session_state.dados_sessao[m].pop(i_idx)
                                 st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
-                    if st.session_state.dados_sessao[m]:
-                        for i_idx, item in enumerate(st.session_state.dados_sessao[m]):
-                            with st.expander(f"📄 {item['name']}", expanded=False):
-                                is_img = item['type'] == "p" or item['name'].lower().endswith(('.png', '.jpg', '.jpeg'))
-                                if is_img:
-                                    st.image(item['content'], width='stretch')
-                                else:
-                                    st.info(f"Visualização indisponível ({item['name'].split('.')[-1].upper()}).")
-                                if st.button("Remover", key=f"del_{m}_{i_idx}_{b_idx}"):
-                                    st.session_state.dados_sessao[m].pop(i_idx)
-                                    st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+# --- GERAÇÃO FINAL ---
+if st.button("🚀 FINALIZAR E GERAR RELATÓRIO", type="primary", width='stretch'):
+    try:
+        progress_bar = st.progress(0)
+        with tempfile.TemporaryDirectory() as tmp:
+            docx_p = os.path.join(tmp, "relatorio.docx")
+            doc = DocxTemplate("template.docx")
+            
+            mes_ano_ref = f"{mes_selecionado}/{ano_selecionado}"
+            
+            dados_finais = {
+                "SISTEMA_MES_REFERENCIA": mes_ano_ref,
+                "ANALISTA_TOTAL_ATENDIMENTOS": st.session_state.get("in_total", ""),
+                "TOTAL_RAIO_X": st.session_state.get("in_rx", ""),
+                "ANALISTA_META_MES": str(meta_calculada),
+                "ANALISTA_META_MINUS_25": str(meta_min),
+                "ANALISTA_META_PLUS_25": str(meta_max),
+                "ANALISTA_MEDICO_CLINICO": st.session_state.get("in_mc", ""),
+                "ANALISTA_MEDICO_PEDIATRA": st.session_state.get("in_mp", ""),
+                "ANALISTA_ODONTO_CLINICO": st.session_state.get("in_oc", ""),
+                "ANALISTA_ODONTO_PED": st.session_state.get("in_op", ""),
+                "TOTAL_PACIENTES_CCIH": st.session_state.get("in_ccih", ""),
+                "OUVIDORIA_INTERNA": st.session_state.get("in_oi", ""),
+                "OUVIDORIA_EXTERNA": st.session_state.get("in_oe", ""),
+                "SISTEMA_TOTAL_DE_TRANSFERENCIA": st.session_state.get("in_tt", 0),
+                "SISTEMA_TAXA_DE_TRANSFERENCIA": st.session_state.get("in_taxa", ""),
+                "ANALISTA_TOTAL_OBITO": st.session_state.get("in_to", 0),
+                "ANALISTA_OBITO_MENOR": st.session_state.get("in_to_menor", 0),
+                "ANALISTA_OBITO_MAIOR": st.session_state.get("in_to_maior", 0),
+                "SISTEMA_TOTAL_MEDICOS": int(st.session_state.get("in_mc", 0) or 0) + int(st.session_state.get("in_mp", 0) or 0)
+            }
 
-    # --- GERAÇÃO FINAL ---
-    if st.button("🚀 FINALIZAR E GERAR RELATÓRIO", type="primary", width='stretch'):
-        try:
-            with st.spinner("Gerando documentos..."):
-                with tempfile.TemporaryDirectory() as tmp:
-                    docx_p = os.path.join(tmp, "relatorio.docx")
-                    doc = DocxTemplate("template.docx")
-                    
-                    dados_finais = {
-                        "SISTEMA_MES_REFERENCIA": f"{mes_sel}/{ano_sel}",
-                        "ANALISTA_TOTAL_ATENDIMENTOS": st.session_state.get("in_total", ""),
-                        "TOTAL_RAIO_X": st.session_state.get("in_rx", ""),
-                        "ANALISTA_META_MES": str(meta_calc),
-                        "ANALISTA_META_MINUS_25": str(int(meta_calc*0.75)),
-                        "ANALISTA_META_PLUS_25": str(int(meta_calc*1.25)),
-                        "ANALISTA_MEDICO_CLINICO": st.session_state.get("in_mc", ""),
-                        "ANALISTA_MEDICO_PEDIATRA": st.session_state.get("in_mp", ""),
-                        "ANALISTA_ODONTO_CLINICO": st.session_state.get("in_oc", ""),
-                        "ANALISTA_ODONTO_PED": st.session_state.get("in_op", ""),
-                        "TOTAL_PACIENTES_CCIH": st.session_state.get("in_ccih", ""),
-                        "OUVIDORIA_INTERNA": st.session_state.get("in_oi", ""),
-                        "OUVIDORIA_EXTERNA": st.session_state.get("in_oe", ""),
-                        "SISTEMA_TOTAL_DE_TRANSFERENCIA": st.session_state.get("in_tt", 0),
-                        "SISTEMA_TAXA_DE_TRANSFERENCIA": st.session_state.get("in_taxa", ""),
-                        "ANALISTA_TOTAL_OBITO": st.session_state.get("in_to", 0),
-                        "ANALISTA_OBITO_MENOR": st.session_state.get("in_to_menor", 0),
-                        "ANALISTA_OBITO_MAIOR": st.session_state.get("in_to_maior", 0),
-                        "SISTEMA_TOTAL_MEDICOS": int(st.session_state.get("in_mc", 0) or 0) + int(st.session_state.get("in_mp", 0) or 0)
-                    }
-
-                    for marcador in DIMENSOES_CAMPOS.keys():
-                        lista_imgs = []
-                        for item in st.session_state.dados_sessao[marcador]:
-                            res = processar_item_lista(doc, item['content'], marcador)
-                            if res: lista_imgs.extend(res)
-                        dados_finais[marcador] = lista_imgs
-                    
-                    doc.render(dados_finais)
-                    doc.save(docx_p)
-                    
-                    st.success("✅ Relatório pronto para download!")
-                    cd1, cd2 = st.columns(2)
-                    with cd1:
-                        with open(docx_p, "rb") as f_w:
-                            st.download_button("📥 WORD (.docx)", f_w.read(), f"Relatorio_{mes_sel}.docx", width='stretch')
-                    with cd2:
-                        try:
-                            converter_para_pdf(docx_p, tmp)
-                            pdf_p = os.path.join(tmp, "relatorio.pdf")
-                            if os.path.exists(pdf_p):
-                                with open(pdf_p, "rb") as f_p:
-                                    st.download_button("📥 PDF", f_p.read(), f"Relatorio_{mes_sel}.pdf", width='stretch')
-                        except: st.warning("LibreOffice não encontrado.")
-        except Exception as e: st.error(f"Erro: {e}")
+            for marcador in DIMENSOES_CAMPOS.keys():
+                lista_imgs = []
+                for item in st.session_state.dados_sessao[marcador]:
+                    res = processar_item_lista(doc, item['content'], marcador)
+                    if res: lista_imgs.extend(res)
+                dados_finais[marcador] = lista_imgs
+            
+            doc.render(dados_finais)
+            doc.save(docx_p)
+            progress_bar.progress(60)
+            
+            st.success("✅ Relatório gerado!")
+            c_down1, c_down2 = st.columns(2)
+            with c_down1:
+                with open(docx_p, "rb") as f_w:
+                    st.download_button(label="📥 Baixar WORD (.docx)", data=f_w.read(), file_name=f"Relatorio_{mes_selecionado}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", width='stretch')
+            with c_down2:
+                try:
+                    converter_para_pdf(docx_p, tmp)
+                    pdf_p = os.path.join(tmp, "relatorio.pdf")
+                    if os.path.exists(pdf_p):
+                        with open(pdf_p, "rb") as f_p:
+                            st.download_button(label="📥 Baixar PDF", data=f_p.read(), file_name=f"Relatorio_{mes_selecionado}.pdf", mime="application/pdf", width='stretch')
+                except: st.warning("LibreOffice não encontrado.")
+    except Exception as e: st.error(f"Erro na geração: {e}")
 
 st.caption("Desenvolvido por Leonardo Barcelos Martins")
+
+    
