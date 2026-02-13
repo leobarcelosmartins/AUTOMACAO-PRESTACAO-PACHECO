@@ -256,7 +256,7 @@ with t_evidencia:
         st.markdown('</div>', unsafe_allow_html=True)
 
 # --- GERAÇÃO FINAL ---
-if st.button("🚀 FINALIZAR E GERAR RELATÓRIO", type="primary", width='stretch'):
+if st.button("FINALIZAR E GERAR RELATÓRIO", type="primary", width='stretch'):
     try:
         progress_bar = st.progress(0)
         with tempfile.TemporaryDirectory() as tmp:
@@ -316,6 +316,7 @@ if st.button("🚀 FINALIZAR E GERAR RELATÓRIO", type="primary", width='stretch
 st.caption("Desenvolvido por Leonardo Barcelos Martins")
 
     
+
 
 
 
