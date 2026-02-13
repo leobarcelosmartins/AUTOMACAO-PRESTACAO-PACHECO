@@ -15,7 +15,7 @@ import time
 import calendar
 
 # --- CONFIGURAÇÕES DE LAYOUT ---
-st.set_page_config(page_title="Gerador de Relatórios V0.7.12", layout="wide")
+st.set_page_config(page_title="Gerador de Relatórios - UPA Pacheco", layout="wide")
 
 # --- CONSTANTES DO CONTRATO ---
 META_DIARIA_CONTRATO = 250
@@ -194,12 +194,12 @@ with t_manual:
     with c15: st.text_input("Taxa de Transferência (%)", key="in_taxa")
 
     c16, c17, c18 = st.columns(3)
-    with c16: st.number_input("Total de Transferências", step=1, key="in_tt")
-    with c17: st.number_input("Total de Óbitos", key="in_to", step=1)
-    with c18: st.number_input("Óbito < 24h", key="in_to_menor", step=1)
+    with c16: st.text_input("Total de Transferências", key="in_tt")
+    with c17: st.text_input("Total de Óbitos", key="in_to")
+    with c18: st.text_input("Óbito < 24h", key="in_to_menor")
 
     c19, c20, c21 = st.columns(3)
-    with c19: st.number_input("Óbito > 24h", key="in_to_maior", step=1)
+    with c19: st.text_input("Óbito > 24h", key="in_to_maior")
 
 with t_evidencia:
     labels = {
@@ -256,12 +256,12 @@ with t_evidencia:
         st.markdown('</div>', unsafe_allow_html=True)
 
 # --- GERAÇÃO FINAL ---
-if st.button("FINALIZAR E GERAR RELATÓRIO", type="primary", width='stretch'):
+if st.button("🚀 FINALIZAR E GERAR RELATÓRIO", type="primary", width='stretch'):
     try:
         progress_bar = st.progress(0)
         with tempfile.TemporaryDirectory() as tmp:
             docx_p = os.path.join(tmp, "relatorio.docx")
-            doc = DocxTemplate("template.docx")
+            doc = DocxTemplate("template-upa-pacheco.docx")
             
             mes_ano_ref = f"{mes_selecionado}/{ano_selecionado}"
             
@@ -302,26 +302,16 @@ if st.button("FINALIZAR E GERAR RELATÓRIO", type="primary", width='stretch'):
             c_down1, c_down2 = st.columns(2)
             with c_down1:
                 with open(docx_p, "rb") as f_w:
-                    st.download_button(label="Baixar WORD (.docx)", data=f_w.read(), file_name=f"Relatorio_{mes_selecionado}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", width='stretch')
+                    st.download_button(label="Baixar WORD (.docx)", data=f_w.read(), file_name=f"RELATÓRIO ASSISTENCIAL MENSAL - UPA PACHECO_{mes_selecionado}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", width='stretch')
             with c_down2:
                 try:
                     converter_para_pdf(docx_p, tmp)
                     pdf_p = os.path.join(tmp, "relatorio.pdf")
                     if os.path.exists(pdf_p):
                         with open(pdf_p, "rb") as f_p:
-                            st.download_button(label="Baixar PDF", data=f_p.read(), file_name=f"Relatorio_{mes_selecionado}.pdf", mime="application/pdf", width='stretch')
+                            st.download_button(label="Baixar PDF", data=f_p.read(), file_name=f"RELATÓRIO ASSISTENCIAL MENSAL - UPA PACHECO_{mes_selecionado}.pdf", mime="application/pdf", width='stretch')
                 except: st.warning("LibreOffice não encontrado.")
     except Exception as e: st.error(f"Erro na geração: {e}")
 
 st.caption("Desenvolvido por Leonardo Barcelos Martins")
-
-    
-
-
-
-
-
-
-
-
 
