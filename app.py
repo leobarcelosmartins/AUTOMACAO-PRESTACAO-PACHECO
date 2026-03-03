@@ -163,7 +163,7 @@ with st.sidebar:
     total_anexos = sum(len(v) for v in st.session_state.dados_sessao.values())
     st.metric("Total de Anexos", total_anexos)
     
-    if st.button("🗑 Limpar Todos os Dados", width='stretch'):
+    if st.button("🗑 Limpar Todos os Dados", use_container_width=True):
         st.session_state.dados_sessao = {m: [] for m in DIMENSOES_CAMPOS.keys()}
         st.rerun()
 
@@ -249,7 +249,7 @@ with st.expander("📂 Gestor de Relatórios Guardados", expanded=not st.session
             excluir_relatorio(sel_disco)
     with col_g2:
         novo_nome = st.text_input("Nome do Relatório", placeholder="Ex: Pacheco_Marco_2025")
-        if st.button("💾 Salvar Progresso Actual", use_container_width=True, kind="primary"):
+        if st.button("💾 Salvar Progresso Actual", use_container_width=True, type="primary"):
             salvar_relatorio(novo_nome)
 
 st.markdown("---")
@@ -360,7 +360,7 @@ with t_evidencia:
         st.markdown('</div>', unsafe_allow_html=True)
 
 # --- GERAÇÃO FINAL COM PROTEÇÃO (v0.7.12) ---
-if st.button("🚀 FINALIZAR E GERAR RELATÓRIO", type="primary", width='stretch'):
+if st.button("🚀 FINALIZAR E GERAR RELATÓRIO", type="primary", use_container_width=True):
     try:
         progress_bar = st.progress(0)
         with tempfile.TemporaryDirectory() as tmp:
@@ -407,14 +407,14 @@ if st.button("🚀 FINALIZAR E GERAR RELATÓRIO", type="primary", width='stretch
             c_down1, c_down2 = st.columns(2)
             with c_down1:
                 with open(docx_p, "rb") as f_w:
-                    st.download_button(label="Baixar WORD (.docx)", data=f_w.read(), file_name=f"RELATÓRIO ASSISTENCIAL MENSAL - UPA PACHECO_{mes_selecionado}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", width='stretch')
+                    st.download_button(label="Baixar WORD (.docx)", data=f_w.read(), file_name=f"RELATÓRIO ASSISTENCIAL MENSAL - UPA PACHECO_{mes_selecionado}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", use_container_width=True)
             with c_down2:
                 try:
                     converter_para_pdf(docx_p, tmp)
                     pdf_p = os.path.join(tmp, "relatorio.pdf")
                     if os.path.exists(pdf_p):
                         with open(pdf_p, "rb") as f_p:
-                            st.download_button(label="Baixar PDF", data=f_p.read(), file_name=f"RELATÓRIO ASSISTENCIAL MENSAL - UPA PACHECO_{mes_selecionado}.pdf", mime="application/pdf", width='stretch')
+                            st.download_button(label="Baixar PDF", data=f_p.read(), file_name=f"RELATÓRIO ASSISTENCIAL MENSAL - UPA PACHECO_{mes_selecionado}.pdf", mime="application/pdf", use_container_width=True)
                 except: st.warning("LibreOffice não encontrado.")
     except Exception as e: st.error(f"Erro na geração: {e}")
 
