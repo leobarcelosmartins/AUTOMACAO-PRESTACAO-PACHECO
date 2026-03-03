@@ -407,15 +407,16 @@ if st.button("🚀 FINALIZAR E GERAR RELATÓRIO", type="primary", use_container_
             c_down1, c_down2 = st.columns(2)
             with c_down1:
                 with open(docx_p, "rb") as f_w:
-                    st.download_button(label="Baixar WORD (.docx)", data=f_w.read(), file_name=f"RELATÓRIO ASSISTENCIAL MENSAL - UPA PACHECO_{mes_selecionado}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", use_container_width=True)
+                    st.download_button(label="Baixar WORD (.docx)", data=f_w.read(), file_name=f"RELATÓRIO ASSISTENCIAL MENSAL - UPA PACHECO_{mes_ano_ref}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", use_container_width=True)
             with c_down2:
                 try:
                     converter_para_pdf(docx_p, tmp)
                     pdf_p = os.path.join(tmp, "relatorio.pdf")
                     if os.path.exists(pdf_p):
                         with open(pdf_p, "rb") as f_p:
-                            st.download_button(label="Baixar PDF", data=f_p.read(), file_name=f"RELATÓRIO ASSISTENCIAL MENSAL - UPA PACHECO_{mes_selecionado}.pdf", mime="application/pdf", use_container_width=True)
+                            st.download_button(label="Baixar PDF", data=f_p.read(), file_name=f"RELATÓRIO ASSISTENCIAL MENSAL - UPA PACHECO_{mes_ano_ref}.pdf", mime="application/pdf", use_container_width=True)
                 except: st.warning("LibreOffice não encontrado.")
     except Exception as e: st.error(f"Erro na geração: {e}")
 
 st.caption("Desenvolvido por Leonardo Barcelos Martins")
+
