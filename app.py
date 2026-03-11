@@ -243,13 +243,13 @@ with st.expander("📂 Gestor de Relatórios Guardados", expanded=not st.session
         lista_pastas = [p.name for p in BASE_RELATORIOS_DIR.iterdir() if p.is_dir()]
         sel_disco = st.selectbox("Relatórios Guardados", ["-- Selecionar --"] + lista_pastas)
         ca1, ca2 = st.columns(2)
-        if ca1.button("📥 Carregar Seleccionado", use_container_width=True) and sel_disco != "-- Selecionar --":
+        if ca1.button("📥 Carregar Selecionado", use_container_width=True) and sel_disco != "-- Selecionar --":
             carregar_relatorio(sel_disco)
-        if ca2.button("🗑️ Excluir Seleccionado", use_container_width=True) and sel_disco != "-- Selecionar --":
+        if ca2.button("🗑️ Excluir Selecionado", use_container_width=True) and sel_disco != "-- Selecionar --":
             excluir_relatorio(sel_disco)
     with col_g2:
         novo_nome = st.text_input("Nome do Relatório", placeholder="Ex: Pacheco_Marco_2025")
-        if st.button("💾 Salvar Progresso Actual", use_container_width=True, type="primary"):
+        if st.button("💾 Salvar Progresso", use_container_width=True, type="primary"):
             salvar_relatorio(novo_nome)
 
 st.markdown("---")
@@ -419,4 +419,5 @@ if st.button("🚀 FINALIZAR E GERAR RELATÓRIO", type="primary", use_container_
     except Exception as e: st.error(f"Erro na geração: {e}")
 
 st.caption("Desenvolvido por Leonardo Barcelos Martins")
+
 
