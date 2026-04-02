@@ -156,7 +156,6 @@ def carregar_relatorio(nome_pasta):
 # --- FUNÇÕES DE EXPORTAR E IMPORTAR (ZIP) ---
 
 def gerar_backup_zip():
-    """Cria um ficheiro ZIP em memória contendo o estado.json e as imagens."""
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         evid_meta = {}
@@ -186,7 +185,6 @@ def gerar_backup_zip():
     return buf
 
 def processar_upload_backup(uploaded_zip):
-    """Lê um ficheiro ZIP e restaura todos os dados para a interface."""
     try:
         with zipfile.ZipFile(uploaded_zip, "r") as zf:
             estado_str = zf.read("estado.json").decode("utf-8")
@@ -257,7 +255,7 @@ with st.sidebar:
 # --- UI PRINCIPAL ---
 st.title("Automação de Relatórios - UPA Nova Cidade")
 
-# --- BACKUP DE SEGURANÇA (NOVA SEÇÃO) ---
+# --- BACKUP DE SEGURANÇA ---
 with st.container(border=True):
     st.markdown("#### ☁️ Backup de Segurança (Exportar / Importar)")
     st.caption("Utilize esta opção para não perder os seus dados caso o servidor reinicie.")
@@ -353,13 +351,18 @@ with t_evidencia:
                     key_p = f"p_{m}_{len(st.session_state.dados_sessao[m])}"
                     pasted = paste_image_button(label="Colar Print", key=key_p)
                     if pasted and pasted.image_data:
+                        # Verificação para evitar duplicatas em botões de colar
                         st.session_state.dados_sessao[m].append({"name": f"Captura_{len(st.session_state.dados_sessao[m])+1}.png", "content": pasted.image_data, "type": "p"})
                         st.rerun()
                 with cb:
                     f_up = st.file_uploader("Upload", type=['png', 'jpg', 'pdf', 'xlsx'], key=f"f_{m}_{b_idx}", label_visibility="collapsed")
                     if f_up:
-                        st.session_state.dados_sessao[m].append({"name": f_up.name, "content": f_up, "type": "f"})
-                        st.rerun()
+                        # CORREÇÃO CIRÚRGICA: Verifica se o arquivo já está na lista antes de anexar
+                        # Isso impede o looping infinito causado pelo st.rerun() mantendo o f_up ativo
+                        arquivos_ja_anexados = [item['name'] for item in st.session_state.dados_sessao[m]]
+                        if f_up.name not in arquivos_ja_anexados:
+                            st.session_state.dados_sessao[m].append({"name": f_up.name, "content": f_up, "type": "f"})
+                            st.rerun()
                 if st.session_state.dados_sessao[m]:
                     for i_idx, item in enumerate(st.session_state.dados_sessao[m]):
                         with st.expander(f"{item['name']}", expanded=False):
