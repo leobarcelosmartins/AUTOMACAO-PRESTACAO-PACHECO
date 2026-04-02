@@ -19,7 +19,7 @@ from pathlib import Path
 import zipfile
 
 # --- CONFIGURAÇÕES DE LAYOUT ---
-st.set_page_config(page_title="RELATÓRIO ASSISTENCIAL MENSAL - NOVA CIDADE", layout="wide")
+st.set_page_config(page_title="RELATÓRIO ASSISTENCIAL MENSAL - PACHECO", layout="wide")
 
 # --- CONSTANTES DO CONTRATO ---
 META_DIARIA_CONTRATO = 250
@@ -76,7 +76,7 @@ DIMENSOES_CAMPOS = {
 }
 
 # --- CONFIGURAÇÃO DE PERSISTÊNCIA ---
-BASE_RELATORIOS_DIR = Path("relatorios_salvos_novacidade")
+BASE_RELATORIOS_DIR = Path("relatorios_salvos_pacheco")
 BASE_RELATORIOS_DIR.mkdir(exist_ok=True)
 
 FORM_KEYS = [
@@ -269,7 +269,7 @@ with st.sidebar:
         st.rerun()
 
 # --- UI PRINCIPAL ---
-st.title("Automação de Relatórios - UPA Nova Cidade")
+st.title("Automação de Relatórios - UPA PACHECO")
 
 # --- BACKUP DE SEGURANÇA (DOWNLOAD/UPLOAD) ---
 with st.container(border=True):
@@ -396,7 +396,7 @@ if st.button(" FINALIZAR E GERAR RELATÓRIO", type="primary"):
     try:
         with tempfile.TemporaryDirectory() as tmp:
             docx_p = os.path.join(tmp, "relatorio.docx")
-            doc = DocxTemplate("template-upa-nova-cidade.docx")
+            doc = DocxTemplate("template-upa-pacheco.docx")
             dados_finais = {
                 "SISTEMA_MES_REFERENCIA": f"{st.session_state.get('sel_mes', 'Janeiro')}/{st.session_state.get('sel_ano', 2026)}",
                 "ANALISTA_TOTAL_ATENDIMENTOS": st.session_state.get("in_total", ""),
@@ -431,14 +431,14 @@ if st.button(" FINALIZAR E GERAR RELATÓRIO", type="primary"):
             c_down1, c_down2 = st.columns(2)
             with c_down1:
                 with open(docx_p, "rb") as f_w:
-                    st.download_button(label="Baixar WORD (.docx)", data=f_w.read(), file_name=f"RELATÓRIO_NOVA_CIDADE_{st.session_state.get('sel_mes')}.docx")
+                    st.download_button(label="Baixar WORD (.docx)", data=f_w.read(), file_name=f"RELATÓRIO_PACHECO_{st.session_state.get('sel_mes')}.docx")
             with c_down2:
                 try:
                     converter_para_pdf(docx_p, tmp)
                     pdf_p = os.path.join(tmp, "relatorio.pdf")
                     if os.path.exists(pdf_p):
                         with open(pdf_p, "rb") as f_p:
-                            st.download_button(label="Baixar PDF", data=f_p.read(), file_name=f"RELATÓRIO_NOVA_CIDADE_{st.session_state.get('sel_mes')}.pdf")
+                            st.download_button(label="Baixar PDF", data=f_p.read(), file_name=f"RELATÓRIO_PACHECO_{st.session_state.get('sel_mes')}.pdf")
                 except: st.warning("Conversão PDF indisponível.")
     except Exception as e: st.error(f"Erro na geração: {e}")
 
