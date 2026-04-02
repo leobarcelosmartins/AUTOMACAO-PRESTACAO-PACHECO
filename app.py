@@ -270,7 +270,6 @@ with st.container(border=True):
     with col_down:
         zip_buffer = gerar_backup_zip()
         st.download_button("📤 Baixar .zip", data=zip_buffer, file_name="Backup.zip", type="primary")
-        )
 
 st.caption("Versão 0.7.12")
 
