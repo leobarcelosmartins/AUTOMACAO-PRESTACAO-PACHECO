@@ -116,15 +116,19 @@ def salvar_relatorio(nome):
             fname = f"{m}_{i}{ext}"
             caminho_dest = pasta_evid / fname
             conteudo = item["content"]
+            
+            if hasattr(conteudo, "seek"): conteudo.seek(0)
+            
             if isinstance(conteudo, Image.Image):
                 conteudo.save(caminho_dest, format="PNG")
             else:
-                if hasattr(conteudo, "seek"): conteudo.seek(0) # Volta ao início
                 if hasattr(conteudo, "getvalue"): data = conteudo.getvalue()
-                elif hasattr(conteudo, "read"): 
-                    data = conteudo.read()
+                elif hasattr(conteudo, "read"): data = conteudo.read()
                 else: data = conteudo
                 with open(caminho_dest, "wb") as f: f.write(data)
+            
+            if hasattr(conteudo, "seek"): conteudo.seek(0)
+            
             evid_meta[m].append({"name": item["name"], "file": f"evidencias/{fname}", "type": item["type"]})
 
     estado = {"form_state": {k: st.session_state.get(k) for k in FORM_KEYS}, "evidencias": evid_meta}
@@ -156,6 +160,7 @@ def carregar_relatorio(nome_pasta):
 # --- FUNÇÕES DE EXPORTAR E IMPORTAR (ZIP) ---
 
 def gerar_backup_zip():
+    """Cria um ficheiro ZIP em memória contendo o estado.json e as imagens."""
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         evid_meta = {}
@@ -163,48 +168,56 @@ def gerar_backup_zip():
             evid_meta[marcador] = []
             for i, item in enumerate(itens):
                 conteudo = item["content"]
-                # --- CORREÇÃO: Resetar ponteiro antes da leitura ---
                 if hasattr(conteudo, "seek"): conteudo.seek(0)
                 
+                file_bytes = b""
                 if isinstance(conteudo, Image.Image):
                     img_buf = io.BytesIO()
                     conteudo.save(img_buf, format="PNG")
                     file_bytes = img_buf.getvalue()
                 else:
-                    file_bytes = conteudo.getvalue() if hasattr(conteudo, "getvalue") else conteudo.read()
+                    if hasattr(conteudo, "getvalue"): file_bytes = conteudo.getvalue()
+                    elif hasattr(conteudo, "read"): file_bytes = conteudo.read()
+                    else: file_bytes = conteudo
                 
-                # --- CORREÇÃO: Resetar ponteiro após a leitura ---
                 if hasattr(conteudo, "seek"): conteudo.seek(0)
-
+                
                 nome_interno = f"evidencias/{marcador}_{i}.png"
                 zf.writestr(nome_interno, file_bytes)
                 evid_meta[marcador].append({"name": item["name"], "file": nome_interno, "type": item["type"]})
         
         estado = {"form_state": {k: st.session_state.get(k) for k in FORM_KEYS}, "evidencias": evid_meta}
         zf.writestr("estado.json", json.dumps(estado, ensure_ascii=False, indent=2))
+    
     buf.seek(0)
     return buf
 
 def processar_upload_backup(uploaded_zip):
+    """Lê um ficheiro ZIP e restaura todos os dados para a interface."""
     try:
         with zipfile.ZipFile(uploaded_zip, "r") as zf:
             estado_str = zf.read("estado.json").decode("utf-8")
             estado = json.loads(estado_str)
+            
             for k, v in estado.get("form_state", {}).items():
                 st.session_state[k] = v
             
             st.session_state.dados_sessao = {m: [] for m in DIMENSOES_CAMPOS.keys()}
             for marcador, lista in estado.get("evidencias", {}).items():
                 for meta in lista:
-                    file_bytes = zf.read(meta["file"])
-                    bio = io.BytesIO(file_bytes)
-                    bio.name = meta["name"]
-                    st.session_state.dados_sessao[marcador].append({
-                        "name": meta["name"], "content": bio, "type": meta["type"]
-                    })
-        st.success("✅ Backup importado!")
+                    try:
+                        file_bytes = zf.read(meta["file"])
+                        bio = io.BytesIO(file_bytes)
+                        bio.name = meta["name"]
+                        st.session_state.dados_sessao[marcador].append({
+                            "name": meta["name"], 
+                            "content": bio, 
+                            "type": meta["type"]
+                        })
+                    except Exception: pass
+        st.success("✅ Backup importado com sucesso!")
     except Exception as e:
-        st.error(f"Erro no backup: {e}")
+        st.error(f"Erro ao ler o ficheiro de backup: {e}")
 
 # --- FUNÇÕES CORE ---
 
@@ -223,7 +236,7 @@ def converter_para_pdf(docx_path, output_dir):
 def processar_item_lista(doc_template, item, marcador):
     largura = DIMENSOES_CAMPOS.get(marcador, 165)
     try:
-        if hasattr(item, 'seek'): item.seek(0) # Garante que está no começo
+        if hasattr(item, 'seek'): item.seek(0)
         if isinstance(item, Image.Image):
             img_buf = io.BytesIO()
             item.save(img_buf, format='PNG')
@@ -258,18 +271,33 @@ with st.sidebar:
 # --- UI PRINCIPAL ---
 st.title("Automação de Relatórios - UPA Nova Cidade")
 
-# --- BACKUP DE SEGURANÇA ---
+# --- BACKUP DE SEGURANÇA (DOWNLOAD/UPLOAD) ---
 with st.container(border=True):
-    st.markdown("#### ☁️ Backup de Segurança")
+    st.markdown("#### ☁️ Backup de Segurança (Exportar / Importar)")
+    st.caption("Utilize esta opção para não perder os seus dados caso o servidor reinicie.")
+    
     col_up, col_down = st.columns(2)
+    
     with col_up:
-        zip_upload = st.file_uploader("📥 Retomar Relatório", type=["zip"])
-        if zip_upload and st.button("Restaurar Dados"):
-            processar_upload_backup(zip_upload)
-            st.rerun()
+        zip_upload = st.file_uploader("📥 Retomar Relatório (Carregar .zip)", type=["zip"], key="upload_backup")
+        if zip_upload:
+            if st.button("Restaurar Dados do ZIP", key="btn_restore", use_container_width=True):
+                processar_upload_backup(zip_upload)
+                time.sleep(1)
+                st.rerun()
+
     with col_down:
+        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
         zip_buffer = gerar_backup_zip()
-        st.download_button("📤 Baixar .zip", data=zip_buffer, file_name="Backup.zip", type="primary")
+        nome_backup = f"Backup_Relatorio_{st.session_state.get('sel_mes', 'Atual')}.zip"
+        st.download_button(
+            label="📤 Guardar Progresso (Baixar .zip)",
+            data=zip_buffer,
+            file_name=nome_backup,
+            mime="application/zip",
+            type="primary",
+            use_container_width=True
+        )
 
 st.caption("Versão 0.7.12")
 
@@ -306,6 +334,7 @@ with t_manual:
     with c12: st.text_input("Pacientes CCIH", key="in_ccih")
     c13, c14, c15 = st.columns(3)
     with c13: st.text_input("Ouvidoria Interna", key="in_oi")
+    with col_down: pass # Placeholder
     with c14: st.text_input("Ouvidoria Externa", key="in_oe")
     with c15: st.text_input("Taxa de Transferência (%)", key="in_taxa")
     c16, c17, c18 = st.columns(3)
@@ -355,7 +384,6 @@ with t_evidencia:
                     for i_idx, item in enumerate(st.session_state.dados_sessao[m]):
                         with st.expander(f"{item['name']}", expanded=False):
                             if item['type'] == "p" or item['name'].lower().endswith(('.png', '.jpg', '.jpeg')):
-                                # Reset do ponteiro antes de exibir a imagem
                                 if hasattr(item['content'], 'seek'): item['content'].seek(0)
                                 st.image(item['content'], use_container_width=True)
                             if st.button("Remover", key=f"del_{m}_{i_idx}_{b_idx}"):
