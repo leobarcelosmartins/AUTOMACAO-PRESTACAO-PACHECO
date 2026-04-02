@@ -339,10 +339,10 @@ with t_manual:
     with c15: st.text_input("Taxa de Transferência (%)", key="in_taxa")
     c16, c17, c18 = st.columns(3)
     with c16: st.number_input("Total de Transferências", step=1, key="in_tt")
-    with c17: st.number_input("Total de Óbitos", key="in_to", step=1)
-    with c18: st.number_input("Óbito < 24h", key="in_to_menor", step=1)
+    with c17: st.text_input("Total de Óbitos", key="in_to")
+    with c18: st.text_input("Óbito < 24h", key="in_to_menor")
     c19, c20, c21 = st.columns(3)
-    with c19: st.number_input("Óbito > 24h", key="in_to_maior", step=1)
+    with c19: st.text_input("Óbito > 24h", key="in_to_maior")
 
 with t_evidencia:
     labels = {
