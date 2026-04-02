@@ -163,18 +163,19 @@ def gerar_backup_zip():
             evid_meta[marcador] = []
             for i, item in enumerate(itens):
                 conteudo = item["content"]
-                file_bytes = b""
+                # --- CORREÇÃO: Resetar ponteiro antes da leitura ---
+                if hasattr(conteudo, "seek"): conteudo.seek(0)
+                
                 if isinstance(conteudo, Image.Image):
                     img_buf = io.BytesIO()
                     conteudo.save(img_buf, format="PNG")
                     file_bytes = img_buf.getvalue()
                 else:
-                    if hasattr(conteudo, "seek"): conteudo.seek(0) # Reset do ponteiro
-                    if hasattr(conteudo, "getvalue"): file_bytes = conteudo.getvalue()
-                    elif hasattr(conteudo, "read"): 
-                        file_bytes = conteudo.read()
-                    else: file_bytes = conteudo
+                    file_bytes = conteudo.getvalue() if hasattr(conteudo, "getvalue") else conteudo.read()
                 
+                # --- CORREÇÃO: Resetar ponteiro após a leitura ---
+                if hasattr(conteudo, "seek"): conteudo.seek(0)
+
                 nome_interno = f"evidencias/{marcador}_{i}.png"
                 zf.writestr(nome_interno, file_bytes)
                 evid_meta[marcador].append({"name": item["name"], "file": nome_interno, "type": item["type"]})
@@ -191,18 +192,19 @@ def processar_upload_backup(uploaded_zip):
             estado = json.loads(estado_str)
             for k, v in estado.get("form_state", {}).items():
                 st.session_state[k] = v
+            
             st.session_state.dados_sessao = {m: [] for m in DIMENSOES_CAMPOS.keys()}
             for marcador, lista in estado.get("evidencias", {}).items():
                 for meta in lista:
-                    try:
-                        file_bytes = zf.read(meta["file"])
-                        bio = io.BytesIO(file_bytes)
-                        bio.name = meta["name"]
-                        st.session_state.dados_sessao[marcador].append({"name": meta["name"], "content": bio, "type": meta["type"]})
-                    except Exception: pass
-        st.success("✅ Backup importado com sucesso!")
+                    file_bytes = zf.read(meta["file"])
+                    bio = io.BytesIO(file_bytes)
+                    bio.name = meta["name"]
+                    st.session_state.dados_sessao[marcador].append({
+                        "name": meta["name"], "content": bio, "type": meta["type"]
+                    })
+        st.success("✅ Backup importado!")
     except Exception as e:
-        st.error(f"Erro ao ler o ficheiro de backup: {e}")
+        st.error(f"Erro no backup: {e}")
 
 # --- FUNÇÕES CORE ---
 
@@ -258,27 +260,16 @@ st.title("Automação de Relatórios - UPA Nova Cidade")
 
 # --- BACKUP DE SEGURANÇA ---
 with st.container(border=True):
-    st.markdown("#### ☁️ Backup de Segurança (Exportar / Importar)")
-    st.caption("Utilize esta opção para não perder os seus dados caso o servidor reinicie.")
+    st.markdown("#### ☁️ Backup de Segurança")
     col_up, col_down = st.columns(2)
     with col_up:
-        zip_upload = st.file_uploader("📥 Retomar Relatório (Carregar .zip)", type=["zip"], key="upload_backup")
-        if zip_upload:
-            if st.button("Restaurar Dados do ZIP", key="btn_restore", use_container_width=True):
-                processar_upload_backup(zip_upload)
-                time.sleep(1)
-                st.rerun()
+        zip_upload = st.file_uploader("📥 Retomar Relatório", type=["zip"])
+        if zip_upload and st.button("Restaurar Dados"):
+            processar_upload_backup(zip_upload)
+            st.rerun()
     with col_down:
-        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
         zip_buffer = gerar_backup_zip()
-        nome_backup = f"Backup_Relatorio_{st.session_state.get('sel_mes', 'Atual')}.zip"
-        st.download_button(
-            label="📤 Guardar Progresso (Baixar .zip)",
-            data=zip_buffer,
-            file_name=nome_backup,
-            mime="application/zip",
-            type="primary",
-            use_container_width=True
+        st.download_button("📤 Baixar .zip", data=zip_buffer, file_name="Backup.zip", type="primary")
         )
 
 st.caption("Versão 0.7.12")
