@@ -119,9 +119,9 @@ def salvar_relatorio(nome):
             if isinstance(conteudo, Image.Image):
                 conteudo.save(caminho_dest, format="PNG")
             else:
+                if hasattr(conteudo, "seek"): conteudo.seek(0) # Volta ao início
                 if hasattr(conteudo, "getvalue"): data = conteudo.getvalue()
                 elif hasattr(conteudo, "read"): 
-                    conteudo.seek(0)
                     data = conteudo.read()
                 else: data = conteudo
                 with open(caminho_dest, "wb") as f: f.write(data)
@@ -169,9 +169,9 @@ def gerar_backup_zip():
                     conteudo.save(img_buf, format="PNG")
                     file_bytes = img_buf.getvalue()
                 else:
+                    if hasattr(conteudo, "seek"): conteudo.seek(0) # Reset do ponteiro
                     if hasattr(conteudo, "getvalue"): file_bytes = conteudo.getvalue()
                     elif hasattr(conteudo, "read"): 
-                        conteudo.seek(0)
                         file_bytes = conteudo.read()
                     else: file_bytes = conteudo
                 
@@ -221,6 +221,7 @@ def converter_para_pdf(docx_path, output_dir):
 def processar_item_lista(doc_template, item, marcador):
     largura = DIMENSOES_CAMPOS.get(marcador, 165)
     try:
+        if hasattr(item, 'seek'): item.seek(0) # Garante que está no começo
         if isinstance(item, Image.Image):
             img_buf = io.BytesIO()
             item.save(img_buf, format='PNG')
@@ -351,14 +352,11 @@ with t_evidencia:
                     key_p = f"p_{m}_{len(st.session_state.dados_sessao[m])}"
                     pasted = paste_image_button(label="Colar Print", key=key_p)
                     if pasted and pasted.image_data:
-                        # Verificação para evitar duplicatas em botões de colar
                         st.session_state.dados_sessao[m].append({"name": f"Captura_{len(st.session_state.dados_sessao[m])+1}.png", "content": pasted.image_data, "type": "p"})
                         st.rerun()
                 with cb:
                     f_up = st.file_uploader("Upload", type=['png', 'jpg', 'pdf', 'xlsx'], key=f"f_{m}_{b_idx}", label_visibility="collapsed")
                     if f_up:
-                        # CORREÇÃO CIRÚRGICA: Verifica se o arquivo já está na lista antes de anexar
-                        # Isso impede o looping infinito causado pelo st.rerun() mantendo o f_up ativo
                         arquivos_ja_anexados = [item['name'] for item in st.session_state.dados_sessao[m]]
                         if f_up.name not in arquivos_ja_anexados:
                             st.session_state.dados_sessao[m].append({"name": f_up.name, "content": f_up, "type": "f"})
@@ -367,6 +365,8 @@ with t_evidencia:
                     for i_idx, item in enumerate(st.session_state.dados_sessao[m]):
                         with st.expander(f"{item['name']}", expanded=False):
                             if item['type'] == "p" or item['name'].lower().endswith(('.png', '.jpg', '.jpeg')):
+                                # Reset do ponteiro antes de exibir a imagem
+                                if hasattr(item['content'], 'seek'): item['content'].seek(0)
                                 st.image(item['content'], use_container_width=True)
                             if st.button("Remover", key=f"del_{m}_{i_idx}_{b_idx}"):
                                 st.session_state.dados_sessao[m].pop(i_idx)
